@@ -1,9 +1,3 @@
-%% FORCE-DEPENDENT ADHESION: NUMERICAL SIMULATIONS (BMB-ready package)
-%   (S1) Baseline vs adhesion-enabled invasion (snapshots + invasion front)
-%   (S2) Cell-scale motility statistics: MSD and effective diffusion vs force
-%
-
-
 clear; close all; clc;
 
 
@@ -57,7 +51,7 @@ P.save_plots = false;
 nRep_S1 = 10;
 snapTimes = [0 0.2, 0.6, 1.2, 1.5, 2.0, 2.5];
 
-% preallocate separate cell arrays (parfor-friendly)
+% preallocate separate cell arrays
 results_baseline = cell(nRep_S1,1);
 results_adhesion  = cell(nRep_S1,1);
 
@@ -77,7 +71,7 @@ results_S1.adhesion  = results_adhesion;
 
 clear Pconst
 
-% Example snapshots (single replicate)
+% Example snapshots 
 repShow = 1;
 outB = results_S1.baseline{repShow};
 outA = results_S1.adhesion{repShow};
@@ -113,7 +107,7 @@ P2const = parallel.pool.Constant(P2);
 for iF = 1:nF
     F = P2.F_test(iF);
 
-    % preallocate per-iteration cell arrays for parfor (if you need to store full outputs)
+    % preallocate per-iteration cell arrays for parfor
     % Here we only need MSD values, so write directly into sliced arrays.
     parfor r = 1:nRep
         % reproducible independent streams:
@@ -153,11 +147,6 @@ drawnow;
 
 %% ------------------------------------------
 function out = simulate_MCC(P, X0, mode, snapTimes, F_override, recordR)
-
-if nargin < 3 || isempty(mode),        mode = 'baseline'; end
-if nargin < 4 || isempty(snapTimes),   snapTimes = [];         end
-if nargin < 5 || isempty(F_override),  F_override = [];        end
-if nargin < 6 || isempty(recordR),     recordR = false;        end
 
 X = X0;
 N = size(X,1);
@@ -286,8 +275,8 @@ end
 
 %% ----------------------------------
 function gammaSum = obstruction_sum(P, X)
-% Sum of obstruction fractions gamma_{k,i} over neighbours within interaction radius.
-% Here we use a simple overlap proxy based on distance; replace with a sharper geometric model if desired.
+% Sum of obstruction fractions gamma_{k,i} over all neighbours within interaction radius.
+
 
 N = size(X,1);
 gammaSum = zeros(N,1);
@@ -300,7 +289,7 @@ for k = 1:N
     nbr = find(d > 0 & d < P.Rint);
     if isempty(nbr), continue; end
 
-    % Proxy for shared surface area: decreases linearly with distance
+    
     % A_{k,i} \in [0, Amax], with Amax chosen as the "long face" area (0.6) times a factor.
     Amax = 0.6; % long face area in the normalised cuboid model
     Aki  = Amax * max(0, 1 - d(nbr)/P.Rint);
@@ -314,13 +303,6 @@ end
 
 %% ----------------------------------
 function s = adhesion_jump_scale(P, X, F)
-% Compute per-cell multiplicative reduction factor for jump magnitude based on
-% force-dependent stochastic bond lifetimes.
-%
-% We implement the spirit of the draft:
-%   - sample mean lifetimes of catch/slip bonds (Gamma),
-%   - combine into alpha_{k,i} = nc*Xbar_c + ns*Xbar_s,
-%   - scale jumps with kappa / alpha, aggregated over bonded neighbours.
 
 N = size(X,1);
 s = ones(N,1);
@@ -337,8 +319,6 @@ for k = 1:N
         continue;
     end
 
-    % For simplicity: treat all neighbours within Rint as bonded (D_{k,i}=1).
-    % If you later implement explicit bond formation/breaking, replace this.
     alphaSumInv = 0;
 
     for j = nbr(:).'
@@ -361,7 +341,6 @@ for k = 1:N
         alphaSumInv = alphaSumInv + (P.kappa / alpha);
     end
 
-    % Reduction factor: more/longer bonds -> smaller jumps
     % We cap to avoid numerical extremes.
     s(k) = min(1.0, max(0.02, alphaSumInv));
 end
@@ -457,4 +436,5 @@ for i = 1:nS
     set(gca,'XTick',[],'YTick',[]);
 end
 end
+
 
